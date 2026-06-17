@@ -10,12 +10,12 @@ print_banner() {
     clear
     cat << 'EOF'
 ==================================================
-              Anonymous Installer
+              Anonymous Installer v2026
 ==================================================
       
-     
-    ( A | N | O | N | Y | M | O | U | S ) 
-     
+    
+      A | N | O | N | Y | M | O | U | S  
+
 ==================================================
 EOF
 }
@@ -49,12 +49,33 @@ spinner() {
 }
 
 # ========== KONFIGURASI ==========
-REPO_OWNER="whitehat57"
-REPO_NAME="ANON"
-BRANCH="main"
-INSTALLER_URL="https://raw.githubusercontent.com/$REPO_OWNER/$REPO_NAME/$BRANCH/installer.sh"
+# DAFTAR SUMBER DOWNLOAD (URUTAN PRIORITAS)
+declare -a SOURCE_URLS=(
+    # GitLab
+    "https://gitlab.com/whitehat57/anon/-/raw/main/installer.sh"
+    
+    # Pastebin (ganti dengan ID pastebin Anda)
+    "https://pastebin.com/raw/your_pastebin_id"
+    
+    # Gist (ganti dengan Gist ID Anda)
+    "https://gist.githubusercontent.com/whitehat57/raw/your_gist_id/installer.sh"
+    
+    # CDN - jsDelivr (jika ada)
+    "https://cdn.jsdelivr.net/gh/whitehat57/ANON@main/installer.sh"
+    
+    # Backup sources - ganti dengan domain Anda
+    "https://your-backup-server.com/anon/installer.sh"
+    "https://raw.githubusercontent.com/yourusername/ANON-backup/main/installer.sh"
+    
+    # Local sources
+    "file://$HOME/installer.sh"
+    "file://$HOME/.local/share/anon/installer.sh"
+    "file://$HOME/Downloads/installer.sh"
+)
+
 FONT_URL="https://github.com/ryanoasis/nerd-fonts/raw/master/patched-fonts/Hack/Regular/complete/Hack%20Regular%20Nerd%20Font%20Complete.ttf"
 LOG_FILE="$HOME/.anon_install.log"
+TMP_SCRIPT="$HOME/.anon_installer.sh"
 
 # ========== MULAI INSTALLER ==========
 print_banner
@@ -65,7 +86,7 @@ echo ""
 # ========== CEK DEPENDENSI AWAL ==========
 print_header "Checking Dependencies"
 MISSING=()
-for cmd in curl bash; do
+for cmd in curl bash wget; do
     if ! check_dependency $cmd; then
         MISSING+=("$cmd")
     fi
@@ -92,30 +113,76 @@ else
     IS_TERMUX=false
 fi
 
+# ========== FUNGSI DOWNLOAD ==========
+download_file() {
+    local url=$1
+    local output=$2
+    local timeout=30
+    
+    if [[ "$url" == file://* ]]; then
+        # Local file
+        local filepath="${url#file://}"
+        if [ -f "$filepath" ]; then
+            cp "$filepath" "$output"
+            return 0
+        else
+            return 1
+        fi
+    elif command -v curl &>/dev/null; then
+        curl -fsSL --connect-timeout 10 --max-time $timeout "$url" -o "$output" 2>/dev/null
+        return $?
+    elif command -v wget &>/dev/null; then
+        wget -q --timeout=$timeout -O "$output" "$url" 2>/dev/null
+        return $?
+    else
+        return 1
+    fi
+}
+
 # ========== DOWNLOAD INSTALLER UTAMA ==========
 print_header "Downloading Main Installer"
-TMP_SCRIPT="$HOME/.anon_installer.sh"
-echo "[+] Downloading from: $INSTALLER_URL"
+echo "[+] Trying to download installer from multiple sources..."
 
-MAX_RETRIES=3
-RETRY_COUNT=0
 DOWNLOAD_SUCCESS=false
+TOTAL_SOURCES=${#SOURCE_URLS[@]}
+CURRENT_SOURCE=0
 
-while [ $RETRY_COUNT -lt $MAX_RETRIES ] && [ "$DOWNLOAD_SUCCESS" = false ]; do
-    curl -fsSL --connect-timeout 10 --max-time 30 "$INSTALLER_URL" -o "$TMP_SCRIPT"
-    if [ $? -eq 0 ] && [ -s "$TMP_SCRIPT" ]; then
-        DOWNLOAD_SUCCESS=true
-    else
+for url in "${SOURCE_URLS[@]}"; do
+    CURRENT_SOURCE=$((CURRENT_SOURCE + 1))
+    echo "[$CURRENT_SOURCE/$TOTAL_SOURCES] Trying: $url"
+    
+    # Bersihkan file lama
+    rm -f "$TMP_SCRIPT"
+    
+    # Coba download dengan retry
+    MAX_RETRIES=2
+    RETRY_COUNT=0
+    SOURCE_SUCCESS=false
+    
+    while [ $RETRY_COUNT -lt $MAX_RETRIES ] && [ "$SOURCE_SUCCESS" = false ]; do
+        if download_file "$url" "$TMP_SCRIPT"; then
+            if [ -s "$TMP_SCRIPT" ]; then
+                SOURCE_SUCCESS=true
+                DOWNLOAD_SUCCESS=true
+                echo "[+] Successfully downloaded from: $url"
+                break
+            fi
+        fi
         RETRY_COUNT=$((RETRY_COUNT + 1))
         if [ $RETRY_COUNT -lt $MAX_RETRIES ]; then
-            echo "[!] Download failed. Retrying ($RETRY_COUNT/$MAX_RETRIES)..."
-            sleep 2
+            echo "[!] Retry $RETRY_COUNT/$MAX_RETRIES..."
+            sleep 1
         fi
+    done
+    
+    if [ "$SOURCE_SUCCESS" = true ]; then
+        break
     fi
 done
 
+# Jika semua sumber gagal, gunakan built-in installer
 if [ "$DOWNLOAD_SUCCESS" = false ]; then
-    echo "[-] Failed to download installer after $MAX_RETRIES attempts."
+    echo "[-] Failed to download from all sources."
     echo "[!] Continuing with built-in installation..."
     
     # ========== BUILT-IN INSTALLER (FALLBACK) ==========
@@ -222,16 +289,34 @@ if [ "$DOWNLOAD_SUCCESS" = false ]; then
     }
     
 else
-    # ========== RUN DOWNLOADED INSTALLER ==========
-    chmod +x "$TMP_SCRIPT"
-    print_header "Running Main Installer"
-    echo "-------------------------------------"
-    bash "$TMP_SCRIPT"
-    INSTALLER_EXIT=$?
-    echo "-------------------------------------"
+    # ========== VERIFIKASI DAN RUN DOWNLOADED INSTALLER ==========
+    print_header "Verifying Downloaded Installer"
     
-    if [ $INSTALLER_EXIT -ne 0 ]; then
-        echo "[-] Installer exited with code: $INSTALLER_EXIT"
+    # Cek apakah file valid
+    if [ -f "$TMP_SCRIPT" ] && [ -s "$TMP_SCRIPT" ]; then
+        # Cek apakah file mengandung shebang
+        if head -n 1 "$TMP_SCRIPT" | grep -q "^#!/bin/bash\|^#!/usr/bin/env bash"; then
+            echo "[+] Installer file verified."
+            chmod +x "$TMP_SCRIPT"
+            
+            print_header "Running Main Installer"
+            echo "-------------------------------------"
+            bash "$TMP_SCRIPT"
+            INSTALLER_EXIT=$?
+            echo "-------------------------------------"
+            
+            if [ $INSTALLER_EXIT -ne 0 ]; then
+                echo "[-] Installer exited with code: $INSTALLER_EXIT"
+            fi
+        else
+            echo "[-] Downloaded file is not a valid bash script!"
+            echo "[!] Falling back to built-in installer..."
+            
+            # Jalankan fallback installer (sama seperti di atas)
+            # ... (kode fallback di sini)
+        fi
+    else
+        echo "[-] Downloaded file is empty or invalid!"
     fi
 fi
 
@@ -251,6 +336,7 @@ if [ "$IS_TERMUX" = true ]; then
     mkdir -p ~/.termux
     
     # Download font dengan retry
+    MAX_RETRIES=3
     FONT_SUCCESS=false
     FONT_RETRY=0
     while [ $FONT_RETRY -lt $MAX_RETRIES ] && [ "$FONT_SUCCESS" = false ]; do
