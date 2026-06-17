@@ -34,19 +34,170 @@ check_dependency() {
     return 0
 }
 
+# ========== FUNGSI SETUP KEYBOARD ==========
+setup_keyboard() {
+    print_header "Setting Up Custom Keyboard"
+    
+    echo "[+] Configuring Termux extra keys..."
+    
+    # Backup konfigurasi lama
+    if [ -f "$HOME/.termux/termux.properties" ]; then
+        cp "$HOME/.termux/termux.properties" "$HOME/.termux/termux.properties.bak"
+        echo "[+] Backup created: termux.properties.bak"
+    fi
+    
+    # Buat direktori .termux jika belum ada
+    mkdir -p "$HOME/.termux"
+    
+    # Pilihan layout keyboard
+    echo ""
+    echo "Pilih layout keyboard yang diinginkan:"
+    echo "=========================================="
+    echo "1) Default - Basic keys (ESC, TAB, CTRL, ALT)"
+    echo "2) Hacker - With special symbols (|, /, -, _, +, =)"
+    echo "3) Coding - With brackets and symbols ({, }, [, ], ;, :)"
+    echo "4) Full - Complete with arrow keys and function keys"
+    echo "5) Minimal - Only essential keys"
+    echo "6) Command - With exit, cd, ls commands"  # BARU
+    echo "7) Custom - Enter your own layout"
+    echo "=========================================="
+    echo ""
+    read -p "Pilih [1-7]: " KEYBOARD_CHOICE
+    
+    case $KEYBOARD_CHOICE in
+        1)
+            # Default layout
+            EXTRA_KEYS="[['ESC','/','-','HOME','UP','END','PGUP'],['TAB','CTRL','ALT','LEFT','DOWN','RIGHT','PGDN']]"
+            echo "[+] Using Default layout"
+            ;;
+        2)
+            # Hacker layout with special symbols
+            EXTRA_KEYS="[['ESC','|','/','-','_','+','='],['TAB','CTRL','ALT','{','}','[',']'],['HOME','UP','END','PGUP','LEFT','DOWN','RIGHT','PGDN']]"
+            echo "[+] Using Hacker layout"
+            ;;
+        3)
+            # Coding layout
+            EXTRA_KEYS="[['ESC','{','}','[',']',';',':'],['TAB','CTRL','ALT','<','>','|','\\'],['HOME','UP','END','PGUP','LEFT','DOWN','RIGHT','PGDN']]"
+            echo "[+] Using Coding layout"
+            ;;
+        4)
+            # Full layout
+            EXTRA_KEYS="[['ESC','/','-','HOME','UP','END','PGUP','DEL'],['TAB','CTRL','ALT','LEFT','DOWN','RIGHT','PGDN','INS'],['F1','F2','F3','F4','F5','F6','F7','F8']]"
+            echo "[+] Using Full layout"
+            ;;
+        5)
+            # Minimal layout
+            EXTRA_KEYS="[['ESC','TAB','CTRL','ALT'],['UP','DOWN','LEFT','RIGHT']]"
+            echo "[+] Using Minimal layout"
+            ;;
+        6)
+            # Command layout with exit, cd, ls
+            EXTRA_KEYS="[['ESC','exit','cd','ls','/','-','_'],['TAB','CTRL','ALT','HOME','UP','END','PGUP'],['LEFT','DOWN','RIGHT','PGDN','DEL','INS','CLR']]"
+            echo "[+] Using Command layout (exit, cd, ls)"
+            ;;
+        7)
+            # Custom layout
+            echo ""
+            echo "[+] Masukkan custom keyboard layout"
+            echo "Contoh format: [['KEY1','KEY2','KEY3'],['KEY4','KEY5','KEY6']]"
+            echo ""
+            echo "Tips untuk command keys:"
+            echo "  - Gunakan 'exit' untuk tombol exit"
+            echo "  - Gunakan 'cd' untuk tombol cd"
+            echo "  - Gunakan 'ls' untuk tombol ls"
+            echo ""
+            read -p "Masukkan layout: " EXTRA_KEYS
+            echo "[+] Using Custom layout"
+            ;;
+        *)
+            # Default jika pilihan salah
+            EXTRA_KEYS="[['ESC','/','-','HOME','UP','END','PGUP'],['TAB','CTRL','ALT','LEFT','DOWN','RIGHT','PGDN']]"
+            echo "[!] Pilihan tidak valid. Menggunakan Default layout."
+            ;;
+    esac
+    
+    # Tulis konfigurasi ke termux.properties
+    cat > "$HOME/.termux/termux.properties" << EOF
+# Termux Configuration
+font_size=14
+use_system_font=false
+fullscreen=true
+bell-character=ignore
+use_black_ui=true
+
+# Extra Keyboard Keys
+extra-keys = $EXTRA_KEYS
+
+# Keyboard Options
+back-key=back
+volume-keys=volume
+enforce-char-based-input=true
+
+# Terminal Emulation
+bell-character=ignore
+use-builtin-libicu=true
+terminal-transcript-rows=2000
+
+# Mouse Support
+allow-external-apps=true
+use-ipv6=true
+EOF
+    
+    # Reload Termux settings
+    if command -v termux-reload-settings &>/dev/null; then
+        termux-reload-settings
+        echo "[+] Termux settings reloaded."
+    else
+        echo "[!] termux-reload-settings not found. Please restart Termux manually."
+    fi
+    
+    # Tampilkan layout yang dipilih
+    echo ""
+    echo "[+] Keyboard layout applied:"
+    echo "   $EXTRA_KEYS"
+    echo ""
+}
+
+# ========== FUNGSI KEYBOARD PRESETS ==========
+show_keyboard_presets() {
+    print_header "Keyboard Layout Presets"
+    
+    cat << 'EOF'
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                           KEYBOARD PRESETS                                   ║
+╠══════════════════════════════════════════════════════════════════════════════╣
+║                                                                              ║
+║  DEFAULT:    [ESC, /, -, HOME, UP, END, PGUP]                               ║
+║              [TAB, CTRL, ALT, LEFT, DOWN, RIGHT, PGDN]                      ║
+║                                                                              ║
+║  HACKER:     [ESC, |, /, -, _, +, =]                                       ║
+║              [TAB, CTRL, ALT, {, }, [, ]]                                   ║
+║              [HOME, UP, END, PGUP, LEFT, DOWN, RIGHT, PGDN]                 ║
+║                                                                              ║
+║  CODING:     [ESC, {, }, [, ], ;, :]                                       ║
+║              [TAB, CTRL, ALT, <, >, |, \]                                   ║
+║              [HOME, UP, END, PGUP, LEFT, DOWN, RIGHT, PGDN]                 ║
+║                                                                              ║
+║  FULL:       [ESC, /, -, HOME, UP, END, PGUP, DEL]                         ║
+║              [TAB, CTRL, ALT, LEFT, DOWN, RIGHT, PGDN, INS]                 ║
+║              [F1, F2, F3, F4, F5, F6, F7, F8]                              ║
+║                                                                              ║
+║  MINIMAL:    [ESC, TAB, CTRL, ALT]                                         ║
+║              [UP, DOWN, LEFT, RIGHT]                                        ║
+║                                                                              ║
+║  COMMAND:    [ESC, exit, cd, ls, /, -, _]      ⬅️ NEW!                     ║
+║              [TAB, CTRL, ALT, HOME, UP, END, PGUP]                          ║
+║              [LEFT, DOWN, RIGHT, PGDN, DEL, INS, CLR]                       ║
+║                                                                              ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+EOF
+}
+
 # ========== KONFIGURASI ==========
-# DAFTAR SUMBER DOWNLOAD
 declare -a SOURCE_URLS=(
-    # Backup di GitLab
     "https://gitlab.com/whitehat57/anon/-/raw/main/installer.sh"
-    
-    # Backup di GitHub
     "https://raw.githubusercontent.com/whitehat57/anon-installer/main/installer.sh"
-    
-    # File hosting services
     "https://filebin.net/anon_installer/installer.sh"
-    
-    # Local file sources
     "file://$HOME/installer.sh"
     "file://$HOME/.local/share/anon/installer.sh"
     "file://$HOME/Downloads/installer.sh"
@@ -91,6 +242,11 @@ if [ -d "/data/data/com.termux" ] || [ -d "$HOME/.termux" ]; then
 else
     echo "[!] Not running in Termux. Some features may not work."
     IS_TERMUX=false
+fi
+
+# ========== TAMPILKAN PRESETS KEYBOARD ==========
+if [ "$IS_TERMUX" = true ]; then
+    show_keyboard_presets
 fi
 
 # ========== FUNGSI DOWNLOAD ==========
@@ -146,7 +302,6 @@ if [ "$DOWNLOAD_SUCCESS" = false ]; then
     echo "[-] Failed to download from all sources."
     echo "[!] Creating built-in installer..."
     
-    # Buat installer script langsung di sini (TANPA CLONING)
     cat > "$TMP_SCRIPT" << 'EOFINSTALLER'
 #!/bin/bash
 
@@ -198,8 +353,37 @@ source ~/.bashrc 2>/dev/null || true
 echo "[+] Setting up Termux font..."
 mkdir -p ~/.termux
 curl -fsSL -o ~/.termux/font.ttf "https://github.com/ryanoasis/nerd-fonts/raw/master/patched-fonts/Hack/Regular/complete/Hack%20Regular%20Nerd%20Font%20Complete.ttf"
-echo "font_size=14" > ~/.termux/termux.properties
-echo "use_black_ui=true" >> ~/.termux/termux.properties
+
+# Setup keyboard dengan exit, cd, ls
+echo "[+] Setting up keyboard with exit, cd, ls..."
+cat > ~/.termux/termux.properties << 'EOFKEYBOARD'
+# Termux Configuration
+font_size=14
+use_system_font=false
+fullscreen=true
+bell-character=ignore
+use_black_ui=true
+
+# Extra Keyboard Keys with exit, cd, ls
+extra-keys = [['ESC','exit','cd','ls','/','-','_'],['TAB','CTRL','ALT','HOME','UP','END','PGUP'],['LEFT','DOWN','RIGHT','PGDN','DEL','INS','CLR']]
+
+# Keyboard Options
+back-key=back
+volume-keys=volume
+enforce-char-based-input=true
+
+# Terminal Emulation
+bell-character=ignore
+use-builtin-libicu=true
+terminal-transcript-rows=2000
+
+# Mouse Support
+allow-external-apps=true
+use-ipv6=true
+EOFKEYBOARD
+
+# Reload settings
+termux-reload-settings 2>/dev/null || true
 
 # Setup Oh My Zsh
 echo "[+] Setting up Oh My Zsh..."
@@ -224,7 +408,7 @@ pip install lolcat
 # Buat direktori projects
 mkdir -p ~/projects
 
-# Buat file main.go sederhana (tanpa cloning)
+# Buat main tool
 echo "[+] Creating main tool..."
 cat > ~/projects/main.go << 'EOFGO'
 package main
@@ -240,6 +424,8 @@ func main() {
     fmt.Println("=====================================")
     fmt.Println("  Anonymous Tool v1.0")
     fmt.Println("=====================================")
+    fmt.Println()
+    fmt.Println("Tips: Gunakan tombol exit, cd, ls di keyboard!")
     fmt.Println()
     
     reader := bufio.NewReader(os.Stdin)
@@ -258,11 +444,39 @@ func main() {
             fmt.Println("  clear - Clear screen")
             fmt.Println("  exit  - Exit program")
             fmt.Println("  info  - Show system info")
+            fmt.Println("  keys  - Show keyboard layout")
+            fmt.Println("  ls    - List directory")
+            fmt.Println("  cd    - Change directory")
         } else if input == "clear" {
             fmt.Print("\033[H\033[2J")
         } else if input == "info" {
             fmt.Println("Anonymous Tool v1.0")
             fmt.Println("Running on Termux")
+        } else if input == "keys" {
+            fmt.Println("Keyboard Layout:")
+            fmt.Println("  Row 1: ESC, exit, cd, ls, /, -, _")
+            fmt.Println("  Row 2: TAB, CTRL, ALT, HOME, UP, END, PGUP")
+            fmt.Println("  Row 3: LEFT, DOWN, RIGHT, PGDN, DEL, INS, CLR")
+        } else if input == "ls" {
+            // List directory
+            files, _ := os.ReadDir(".")
+            for _, file := range files {
+                if file.IsDir() {
+                    fmt.Printf("📁 %s/\n", file.Name())
+                } else {
+                    fmt.Printf("📄 %s\n", file.Name())
+                }
+            }
+        } else if strings.HasPrefix(input, "cd ") {
+            // Change directory
+            dir := strings.TrimPrefix(input, "cd ")
+            err := os.Chdir(dir)
+            if err != nil {
+                fmt.Printf("Error: %s\n", err)
+            } else {
+                currentDir, _ := os.Getwd()
+                fmt.Printf("Changed to: %s\n", currentDir)
+            }
         } else if input != "" {
             fmt.Println("Command not found. Type 'help' for available commands.")
         }
@@ -283,12 +497,13 @@ echo "====================================="
 echo "  Anonymous Tool v1.0 (Shell)"
 echo "====================================="
 echo ""
-echo "Type 'help' for commands, 'exit' to quit"
+echo "Tips: Gunakan tombol exit, cd, ls di keyboard!"
 echo ""
 
 while true; do
     echo -n "anonymous> "
     read cmd
+    
     case $cmd in
         help)
             echo "Available commands:"
@@ -296,6 +511,9 @@ while true; do
             echo "  clear - Clear screen"
             echo "  exit  - Exit program"
             echo "  info  - Show system info"
+            echo "  keys  - Show keyboard layout"
+            echo "  ls    - List directory"
+            echo "  cd    - Change directory"
             ;;
         clear)
             clear
@@ -303,6 +521,23 @@ while true; do
         info)
             echo "Anonymous Tool v1.0"
             echo "Running on Termux"
+            ;;
+        keys)
+            echo "Keyboard Layout:"
+            echo "  Row 1: ESC, exit, cd, ls, /, -, _"
+            echo "  Row 2: TAB, CTRL, ALT, HOME, UP, END, PGUP"
+            echo "  Row 3: LEFT, DOWN, RIGHT, PGDN, DEL, INS, CLR"
+            ;;
+        ls)
+            ls -la --color=auto
+            ;;
+        cd)
+            cd ~
+            echo "Changed to home directory"
+            ;;
+        cd\ *)
+            dir="${cmd#cd }"
+            cd "$dir" 2>/dev/null && echo "Changed to: $(pwd)" || echo "Directory not found"
             ;;
         exit|quit)
             echo "Goodbye!"
@@ -324,6 +559,52 @@ cd ~/projects && ./main
 EOFSTART
 chmod +x ~/start.sh
 
+# Keyboard setup function
+cat > ~/keyboard.sh << 'EOFKEYBOARD'
+#!/bin/bash
+# Keyboard layout changer for Termux
+echo "========================================="
+echo "  Termux Keyboard Layout Changer"
+echo "========================================="
+echo ""
+echo "1) Default - Basic keys"
+echo "2) Hacker - With special symbols"
+echo "3) Coding - With brackets"
+echo "4) Full - Complete layout"
+echo "5) Minimal - Only essential"
+echo "6) Command - With exit, cd, ls (RECOMMENDED)"
+echo "7) Restore backup"
+echo "========================================="
+read -p "Pilih [1-7]: " choice
+
+case $choice in
+    1) LAYOUT="[['ESC','/','-','HOME','UP','END','PGUP'],['TAB','CTRL','ALT','LEFT','DOWN','RIGHT','PGDN']]" ;;
+    2) LAYOUT="[['ESC','|','/','-','_','+','='],['TAB','CTRL','ALT','{','}','[',']'],['HOME','UP','END','PGUP','LEFT','DOWN','RIGHT','PGDN']]" ;;
+    3) LAYOUT="[['ESC','{','}','[',']',';',':'],['TAB','CTRL','ALT','<','>','|','\\'],['HOME','UP','END','PGUP','LEFT','DOWN','RIGHT','PGDN']]" ;;
+    4) LAYOUT="[['ESC','/','-','HOME','UP','END','PGUP','DEL'],['TAB','CTRL','ALT','LEFT','DOWN','RIGHT','PGDN','INS'],['F1','F2','F3','F4','F5','F6','F7','F8']]" ;;
+    5) LAYOUT="[['ESC','TAB','CTRL','ALT'],['UP','DOWN','LEFT','RIGHT']]" ;;
+    6) LAYOUT="[['ESC','exit','cd','ls','/','-','_'],['TAB','CTRL','ALT','HOME','UP','END','PGUP'],['LEFT','DOWN','RIGHT','PGDN','DEL','INS','CLR']]" ;;
+    7) 
+        if [ -f ~/.termux/termux.properties.bak ]; then
+            cp ~/.termux/termux.properties.bak ~/.termux/termux.properties
+            echo "[+] Backup restored"
+        else
+            echo "[-] No backup found"
+        fi
+        termux-reload-settings
+        exit 0
+        ;;
+    *) echo "Invalid choice"; exit 1 ;;
+esac
+
+# Update keyboard
+sed -i "s/extra-keys = .*/extra-keys = $LAYOUT/" ~/.termux/termux.properties
+termux-reload-settings
+echo "[+] Keyboard layout updated!"
+echo "[+] New layout: $LAYOUT"
+EOFKEYBOARD
+chmod +x ~/keyboard.sh
+
 echo ""
 echo "============================================"
 echo "[✓] Built-in installation complete!"
@@ -331,6 +612,12 @@ echo "============================================"
 echo ""
 echo "📝 Quick Start:"
 echo "  • Main Tool: ~/start.sh"
+echo "  • Change Keyboard: ~/keyboard.sh"
+echo ""
+echo "⌨️  Keyboard Layout (exit, cd, ls):"
+echo "  Row 1: ESC, exit, cd, ls, /, -, _"
+echo "  Row 2: TAB, CTRL, ALT, HOME, UP, END, PGUP"
+echo "  Row 3: LEFT, DOWN, RIGHT, PGDN, DEL, INS, CLR"
 echo ""
 echo "[!] Anonymous Installer Ready!"
 echo "============================================"
@@ -338,6 +625,17 @@ EOFINSTALLER
 
     chmod +x "$TMP_SCRIPT"
     echo "[+] Built-in installer created successfully."
+fi
+
+# ========== SETUP KEYBOARD ==========
+if [ "$IS_TERMUX" = true ]; then
+    echo ""
+    read -p "[?] Do you want to setup custom keyboard now? (y/n): " SETUP_KEYBOARD
+    if [[ "$SETUP_KEYBOARD" =~ ^[Yy]$ ]]; then
+        setup_keyboard
+    else
+        echo "[!] Skipping keyboard setup. You can run ~/keyboard.sh later."
+    fi
 fi
 
 # ========== RUN INSTALLER ==========
@@ -365,7 +663,13 @@ echo "=================================================="
 echo ""
 echo "📝 Quick Start:"
 echo "  • Main Tool: ~/start.sh"
+echo "  • Keyboard Setup: ~/keyboard.sh"
 echo "  • Projects Directory: ~/projects/"
+echo ""
+echo "⌨️  Keyboard Layout (exit, cd, ls):"
+echo "  Row 1: ESC, exit, cd, ls, /, -, _"
+echo "  Row 2: TAB, CTRL, ALT, HOME, UP, END, PGUP"
+echo "  Row 3: LEFT, DOWN, RIGHT, PGDN, DEL, INS, CLR"
 echo ""
 echo "💡 To activate Zsh, restart Termux or run:"
 echo "   source ~/.zshrc"
